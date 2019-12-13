@@ -11,6 +11,10 @@ RUN set -eux; \
 	fi; \
 	rm -rf /var/lib/apt/lists/*
 
+# add our user and group first to make sure their IDs get assigned consistently, regardless of whatever dependencies get added
+# important note: we need folder tmp/cache owned by app, make sure we run nginx as app using gosu in docker-entrypoint.sh
+RUN groupadd -r app && useradd -r -m app -g app
+
 # grab gosu for easy step-down from root (https://github.com/tianon/gosu/releases)
 ENV GOSU_VERSION 1.11
 
@@ -214,9 +218,21 @@ RUN set -ex \
         && apt-get update \
 		&& apt-get install -yqq --no-install-recommends $buildDeps;
 
+RUN set -ex \
+	&& chown -R app:app /var/log/nginx \
+	&& chown -R app:app /var/lib/nginx \
+	&& chown -R app:app /etc/nginx \
+	&& chown -R app:app /run; \
+	rm -rf /etc/nginx/sites-enabled/default && rm -rf /etc/nginx/sites-available/default;
+
 # forward request and error logs to docker log collector
 RUN ln -sf /dev/stdout /var/log/nginx/access.log && ln -sf /dev/stderr /var/log/nginx/error.log
 
-EXPOSE 80
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+ENTRYPOINT ["docker-entrypoint.sh"]
+
+# You cannot open privileged ports (<=1024) as non-root
+EXPOSE 8080 8443
 STOPSIGNAL SIGTERM
 CMD ["nginx", "-g", "daemon off;"]
