@@ -39,8 +39,7 @@ RUN set -ex; \
 	rm -r "$GNUPGHOME" /usr/local/bin/gosu.asc; \
 	chmod +x /usr/local/bin/gosu; \
 	gosu nobody true; \
-	wget -O /js-yaml.js "https://github.com/nodeca/js-yaml/raw/${JSYAML_VERSION}/dist/js-yaml.js"; \
-	apt-get purge -y wget;
+	wget -O /js-yaml.js "https://github.com/nodeca/js-yaml/raw/${JSYAML_VERSION}/dist/js-yaml.js";
 
 # install nginx & passenger
 RUN set -x \
@@ -54,7 +53,7 @@ RUN set -x \
 COPY nginx.conf /etc/nginx/
 
 # nodejs
-RUN set -x && apt-get install -yqq curl
+RUN set -ex && apt-get install -yqq curl
 RUN groupadd --gid 1000 node && useradd --uid 1000 --gid node --shell /bin/bash --create-home node
 
 ENV NODE_VERSION 13.3.0
@@ -166,7 +165,6 @@ RUN set -ex \
 	&& make -j "$(nproc)" \
 	&& make install \
 	\
-	# && apt-get purge -yqq --auto-remove $buildDeps \
 	&& cd / \
 	&& rm -r /usr/src/ruby \
 	# rough smoke test
@@ -190,9 +188,7 @@ ENV MONGO_PACKAGE=${MONGO_PACKAGE} MONGO_REPO=${MONGO_REPO}
 
 ENV MONGO_MAJOR 4.2
 ENV MONGO_VERSION 4.2.1
-
 RUN wget -qO - https://www.mongodb.org/static/pgp/server-4.2.asc | apt-key add -
-RUN apt-get install gnupg
 RUN echo "deb [ arch=amd64,arm64 ] http://$MONGO_REPO/apt/ubuntu xenial/${MONGO_PACKAGE%}/$MONGO_MAJOR multiverse" | tee "/etc/apt/sources.list.d/${MONGO_PACKAGE%}-${MONGO_MAJOR%}.list"
 
 RUN set -x \
@@ -202,21 +198,6 @@ RUN set -x \
 		${MONGO_PACKAGE}-tools=$MONGO_VERSION \
 	&& rm -rf /var/lib/apt/lists/* \
 	&& rm -rf /var/lib/mongodb
-
-RUN set -ex \
-        \
-        && buildDeps=' \
-                gcc \
-                make \
-                libxml2 \
-                libxml2-dev \
-                libxslt1-dev \
-                zlib1g-dev \
-                wget \
-                rsync \
-        ' \
-        && apt-get update \
-		&& apt-get install -yqq --no-install-recommends $buildDeps;
 
 RUN set -ex \
 	&& chown -R app:app /var/log/nginx \
